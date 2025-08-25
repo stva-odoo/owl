@@ -57,10 +57,15 @@ export function useState<T extends object>(state: T): T {
   const node = getCurrent();
   let render = batchedRenderFunctions.get(node)!;
   if (!render) {
-    render = batched(node.render.bind(node, false));
-    batchedRenderFunctions.set(node, render);
+    const originalRender = batched(node.render.bind(node, false)); 
+    let renderFunction = originalRender; 
+    render = (...args) => renderFunction(...args); 
+    batchedRenderFunctions.set(node, render); 
     // manual implementation of onWillDestroy to break cyclic dependency
-    node.willDestroy.push(clearReactivesForCallback.bind(null, render));
+    node.willDestroy.push(() => {
+      renderFunction = () => {}; 
+      clearReactivesForCallback(render); 
+    }); 
   }
   return reactive(state, render);
 }
